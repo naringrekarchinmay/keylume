@@ -5,6 +5,11 @@ An unofficial macOS app (and command-line tool) for configuring
 a Windows app; Keylume gives Mac users the same lighting and key-remapping
 features in a native app with a Liquid Glass design.
 
+<p align="center">
+  <img src="assets/screenshots/lighting.png" width="820"
+       alt="Keylume's Lighting screen: a rainbow-lit RK84 keyboard preview above a glass panel with effect buttons, brightness and speed sliders, and colour and sleep settings">
+</p>
+
 > Keylume is an independent, unofficial project and is not affiliated with,
 > endorsed by, or sponsored by Royal Kludge. "Royal Kludge" and "RK84" are used
 > only to describe compatibility. Use at your own risk.
@@ -20,6 +25,19 @@ features in a native app with a Liquid Glass design.
   nothing. "Restore defaults" writes back the stock layout.
 - Settings are saved locally in `~/Library/Application Support/Keylume/profile.json`.
   The keyboard can't report its current settings, so the app remembers them.
+
+<table>
+  <tr>
+    <td><img src="assets/screenshots/per-key.png"
+             alt="Per-key colours screen: W, A, S and D painted red, with a colour palette and Select all and Fill all buttons"></td>
+    <td><img src="assets/screenshots/remap.png"
+             alt="Remap keys screen: the Pause key remapped to send S, with a searchable list of keys to choose from"></td>
+  </tr>
+  <tr>
+    <td align="center">Paint individual keys</td>
+    <td align="center">Remap any key</td>
+  </tr>
+</table>
 
 ## Supported hardware
 
