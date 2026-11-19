@@ -25,7 +25,7 @@ features in a native app with a Liquid Glass design.
 
 | Model | USB ID | Status |
 |---|---|---|
-| RK84 RGB (wired, USB-C) | `258A:00C8` | verified on hardware: lighting, per-key colours, remap, restore defaults |
+| RK84 RGB (wired, USB-C) | `258A:00C8` | verified on hardware: lighting, sleep timer, per-key colours, remap, restore defaults |
 
 Other RK boards from the same family speak a similar protocol but use
 different layouts. PRs that add layouts are welcome.

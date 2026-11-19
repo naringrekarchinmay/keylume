@@ -20,7 +20,7 @@ Each claim is labelled:
 | Per-key colour packet (`03 7E 01 …`), LED index = KB.ini index | **verified**: Esc red and WASD blue landed on the right keys |
 | Key matrix packet (`01 F8 …`, length 505), Pause → Z | **verified**: remap works; other keys, modifiers and Fn unaffected |
 | Default matrix (modifiers as usages `E0–E7`, Fn `00 00 B0 00`) | **verified**: "Restore defaults" brings back the stock layout |
-| Sleep values 1–5 = 5/10/20/30 min / off | not yet verified |
+| Sleep values 1–5 = 5/10/20/30 min / off | **verified**: the backlight turns off after the selected idle time |
 
 ## Device
 
@@ -62,7 +62,7 @@ six `GetFeature` call sites are in other device classes, `0x40f000`–`0x4106xx`
 | 5 | brightness | `LightHW` table indexed by entry `+0x04`; defaults to 0..5 (`0x451b00`) | observed |
 | 6,7,8 | R, G, B | entry `+0x10..+0x12`, order from `RGBIndex=0,1,2` | observed |
 | 9 | colourful / random-colour flag | entry `+0x2c` | observed (field), meaning inferred |
-| 10 | sleep setting | `[dev+0x3e14]` | observed (field); values inferred |
+| 10 | sleep setting | `[dev+0x3e14]` | observed (field); values verified |
 | 11..59 | 0 | | observed |
 
 Mode numbers follow `tc_led_mode1..21` in `Text/en/text.xml` (inferred):
@@ -127,7 +127,7 @@ has to be filled from the defaults or keys stop working.
 - matrix index = LED index for this board.
 
 Rangoli labels sleep values 1–5 as 5, 10, 20 and 30 minutes, then "off".
-Hardware hasn't confirmed this.
+Hardware confirms these values.
 
 Modifier keys are encoded differently:
 

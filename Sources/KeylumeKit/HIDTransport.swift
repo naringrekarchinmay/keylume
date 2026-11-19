@@ -34,10 +34,13 @@ public struct RKDeviceInfo: Sendable {
 /// The device is opened without seizing, so typing keeps working.
 public final class RKKeyboard {
     private let device: IOHIDDevice
+    /// The manager that produced `device`; kept alive while the device is open.
+    private let manager: IOHIDManager
     public let info: RKDeviceInfo
 
-    private init(device: IOHIDDevice, info: RKDeviceInfo) {
+    private init(device: IOHIDDevice, manager: IOHIDManager, info: RKDeviceInfo) {
         self.device = device
+        self.manager = manager
         self.info = info
     }
 
@@ -55,25 +58,23 @@ public final class RKKeyboard {
 
     /// All HID interfaces the keyboard exposes.
     public static func allInterfaces() -> [RKDeviceInfo] {
-        matchingDevices().map(info)
+        matchingDevices().devices.map(info)
     }
-
-    /// Kept alive for the life of the process so opened devices stay valid.
-    private static let manager: IOHIDManager = {
-        let m = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
-        let match: [String: Any] = [kIOHIDVendorIDKey: RKProtocol.vendorID,
-                                    kIOHIDProductIDKey: RKProtocol.productID]
-        IOHIDManagerSetDeviceMatching(m, match as CFDictionary)
-        return m
-    }()
 
     /// Result of the last IOHIDManagerOpen; kIOReturnNotPermitted means Input Monitoring is missing.
     public private(set) static var lastManagerOpenResult: IOReturn = kIOReturnSuccess
 
-    private static func matchingDevices() -> [IOHIDDevice] {
-        lastManagerOpenResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        guard let cfSet = IOHIDManagerCopyDevices(manager) else { return [] }
-        return (cfSet as NSSet).allObjects.map { $0 as! IOHIDDevice }
+    /// A fresh manager every time. The keyboard re-enumerates after some writes
+    /// (e.g. a key-map write), and a long-lived manager that isn't scheduled on a
+    /// run loop never learns about it, so it would keep handing out dead devices.
+    private static func matchingDevices() -> (manager: IOHIDManager, devices: [IOHIDDevice]) {
+        let m = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
+        let match: [String: Any] = [kIOHIDVendorIDKey: RKProtocol.vendorID,
+                                    kIOHIDProductIDKey: RKProtocol.productID]
+        IOHIDManagerSetDeviceMatching(m, match as CFDictionary)
+        lastManagerOpenResult = IOHIDManagerOpen(m, IOOptionBits(kIOHIDOptionsTypeNone))
+        guard let cfSet = IOHIDManagerCopyDevices(m) else { return (m, []) }
+        return (m, (cfSet as NSSet).allObjects.map { $0 as! IOHIDDevice })
     }
 
     /// What macOS reports for Input Monitoring: "granted", "denied" or "not decided".
@@ -99,7 +100,7 @@ public final class RKKeyboard {
     /// Finds and opens the configuration interface.
     public static func open() throws -> RKKeyboard {
         // Try first; only treat it as a permission problem if macOS actually refuses.
-        let devices = matchingDevices()
+        let (manager, devices) = matchingDevices()
         guard let d = devices.first(where: {
             (prop($0, kIOHIDMaxFeatureReportSizeKey) ?? 0) >= RKProtocol.reportLength
         }) else {
@@ -111,10 +112,13 @@ public final class RKKeyboard {
         }
         let r = IOHIDDeviceOpen(d, IOOptionBits(kIOHIDOptionsTypeNone))
         guard r == kIOReturnSuccess else { throw RKError.openFailed(r) }
-        return RKKeyboard(device: d, info: info(d))
+        return RKKeyboard(device: d, manager: manager, info: info(d))
     }
 
-    deinit { IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone)) }
+    deinit {
+        IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+    }
 
     /// Report descriptor bytes, if the driver publishes them.
     public var reportDescriptor: [UInt8]? {

@@ -75,10 +75,21 @@ final class AppState: ObservableObject {
         isError = error
     }
 
+    /// Opens the keyboard and runs `body`. If the keyboard was briefly away (it
+    /// reconnects after a key-map write), waits a moment and tries once more.
+    private func withKeyboard(_ body: (RKKeyboard) throws -> Void) throws {
+        do {
+            try body(try RKKeyboard.open())
+        } catch let e as RKError {
+            if case let .openFailed(r) = e, r == kIOReturnNotPermitted { throw e }
+            usleep(1_200_000)
+            try body(try RKKeyboard.open())
+        }
+    }
+
     private func perform(_ label: String, _ body: (RKKeyboard) throws -> Void) {
         do {
-            let kb = try RKKeyboard.open()
-            try body(kb)
+            try withKeyboard(body)
             connected = true
             needsPermission = false
             report(label)
