@@ -19,10 +19,10 @@ else
   ARCH_FLAGS=()
 fi
 
-swift build -c release "${ARCH_FLAGS[@]}" --product KeylumeApp
-swift build -c release "${ARCH_FLAGS[@]}" --product keylume
+swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --product KeylumeApp
+swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --product keylume
 # The output folder differs between Swift versions for multi-arch builds; ask SwiftPM.
-OUT=$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)
+OUT=$(swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin-path)
 
 APP=dist/Keylume.app
 rm -rf "$APP"
