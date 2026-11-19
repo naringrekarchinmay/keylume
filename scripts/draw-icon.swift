@@ -1,10 +1,12 @@
 // Draws the Keylume app icon at 1024×1024 using the standard macOS icon grid
-// (824 px rounded square, 100 px margin). Usage: swift scripts/draw-icon.swift out.png
+// (824 px rounded square, 100 px margin).
+// Usage: swift scripts/draw-icon.swift out.png [sun|none]
 import AppKit
 import CoreGraphics
 
 let size: CGFloat = 1024
 let out = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "icon.png"
+let symbol = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "sun"
 
 let cs = CGColorSpace(name: CGColorSpace.displayP3)!
 guard let ctx = CGContext(data: nil, width: Int(size), height: Int(size), bitsPerComponent: 8, bytesPerRow: 0,
@@ -98,6 +100,25 @@ ctx.addPath(topPath)
 ctx.setStrokeColor(color(1, 1, 1, 0.4))
 ctx.setLineWidth(4)
 ctx.strokePath()
+
+// Symbol on the keycap face: a sun ("key" + "lume"), authored as paths with
+// one stroke weight and round caps. Sized to stay legible at 16-32 px.
+if symbol != "none" {
+    let ink = color(0.11, 0.09, 0.22, 0.92)
+    let mark = CGPoint(x: 512, y: 530)
+    ctx.setFillColor(ink)
+    ctx.fillEllipse(in: CGRect(x: mark.x - 46, y: mark.y - 46, width: 92, height: 92))
+    ctx.setStrokeColor(ink)
+    ctx.setLineWidth(32)
+    ctx.setLineCap(.round)
+    for i in 0..<8 {
+        let a = CGFloat(i) * .pi / 4
+        let dx: CGFloat = cos(a), dy: CGFloat = sin(a)
+        ctx.move(to: CGPoint(x: mark.x + dx * 82, y: mark.y + dy * 82))
+        ctx.addLine(to: CGPoint(x: mark.x + dx * 104, y: mark.y + dy * 104))
+    }
+    ctx.strokePath()
+}
 
 ctx.restoreGState()
 
