@@ -142,10 +142,11 @@ struct LightingView: View {
                                             Text(m.title)
                                         }
                                         .font(.callout.weight(on ? .semibold : .regular))
-                                        .foregroundStyle(on ? Color.accentColor : .primary)
                                         .padding(.horizontal, 2)
                                     }
-                                    .secondaryGlassButton()
+                                    // Selected: solid accent fill with the system's white label
+                                    // (blue text on blue-tinted glass was too faint to read).
+                                    .modeChipStyle(selected: on)
                                     .controlSize(.large)
                                     .accessibilityAddTraits(on ? .isSelected : [])
                                 }

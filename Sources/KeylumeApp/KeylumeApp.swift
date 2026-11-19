@@ -67,7 +67,10 @@ struct ContentView: View {
                         .help("Write these settings to the keyboard (⌘↩)")
                 }
             }
-            .onChange(of: section) { state.selectedKeys = [] }
+            .onChange(of: section) {
+                state.selectedKeys = []
+                state.showRestingStatus()
+            }
         }
         .confirmationDialog("Write the new key layout to the keyboard?", isPresented: $confirmKeymap) {
             Button("Apply") { state.applyKeymap() }

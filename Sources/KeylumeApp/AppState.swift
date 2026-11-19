@@ -54,13 +54,7 @@ final class AppState: ObservableObject {
     func refreshConnection() {
         connected = !RKKeyboard.allInterfaces().isEmpty
         needsPermission = !connected && RKKeyboard.lastManagerOpenResult == kIOReturnNotPermitted
-        if needsPermission {
-            report("macOS is blocking keyboard access (Input Monitoring: \(RKKeyboard.accessDescription)).", error: true)
-        } else if !connected {
-            report("Keyboard not found. Connect the RK84 with the USB-C cable.", error: true)
-        } else {
-            report("RK84 connected.")
-        }
+        showRestingStatus()
     }
 
     func requestPermission() {
@@ -70,9 +64,31 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func report(_ text: String, error: Bool = false) {
+    private var statusReset: Task<Void, Never>?
+
+    /// Shows a message under the window title. Success messages fade back to the
+    /// connection status after a few seconds; errors stay until the next action.
+    private func report(_ text: String, error: Bool = false, transient: Bool = false) {
+        statusReset?.cancel()
         status = text
         isError = error
+        guard transient, !error else { return }
+        statusReset = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            self?.showRestingStatus()
+        }
+    }
+
+    /// The status that describes the connection rather than the last action.
+    func showRestingStatus() {
+        if needsPermission {
+            report("macOS is blocking keyboard access (Input Monitoring: \(RKKeyboard.accessDescription)).", error: true)
+        } else if !connected {
+            report("Keyboard not found. Connect the RK84 with the USB-C cable.", error: true)
+        } else {
+            report("RK84 connected.")
+        }
     }
 
     /// Opens the keyboard and runs `body`. If the keyboard was briefly away (it
@@ -92,7 +108,7 @@ final class AppState: ObservableObject {
             try withKeyboard(body)
             connected = true
             needsPermission = false
-            report(label)
+            report(label, transient: true)
         } catch let e as RKError {
             if case let .openFailed(r) = e { needsPermission = r == kIOReturnNotPermitted }
             if case .notFound = e { connected = false }

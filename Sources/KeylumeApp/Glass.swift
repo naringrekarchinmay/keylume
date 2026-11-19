@@ -38,6 +38,12 @@ extension View {
         }
     }
 
+    /// Effect picker buttons: prominent when selected, plain glass otherwise.
+    @ViewBuilder
+    func modeChipStyle(selected: Bool) -> some View {
+        if selected { self.primaryGlassButton() } else { self.secondaryGlassButton() }
+    }
+
     @ViewBuilder
     func secondaryGlassButton() -> some View {
         if #available(macOS 26, *) {
