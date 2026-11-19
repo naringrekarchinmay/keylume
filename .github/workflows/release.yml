@@ -1,0 +1,84 @@
+name: Release
+
+# Push a tag like v0.1.0 to build a universal Keylume.app and publish it as a
+# GitHub Release.
+#
+# Signing is optional. Without secrets, the app is ad-hoc signed and users must
+# approve it once in System Settings → Privacy & Security ("Open Anyway"). To ship a Developer ID signed and
+# notarized build, add these repository secrets:
+#   DEVELOPER_ID_P12           base64 of the exported "Developer ID Application" .p12
+#   DEVELOPER_ID_P12_PASSWORD  password for that .p12
+#   SIGN_IDENTITY              e.g. "Developer ID Application: Your Name (TEAMID)"
+#   NOTARY_APPLE_ID, NOTARY_TEAM_ID, NOTARY_PASSWORD (app-specific password)
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    env:
+      HAS_DEVELOPER_ID: ${{ secrets.DEVELOPER_ID_P12 != '' }}
+      SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tests
+        run: swift test
+
+      - name: Import Developer ID certificate
+        if: env.HAS_DEVELOPER_ID == 'true'
+        env:
+          P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+
+      - name: Build and package
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          export VERSION="${GITHUB_REF_NAME#v}"
+          export BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
+          ./scripts/package-release.sh
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -n "$SIGN_IDENTITY" ]; then
+            FIRST_OPEN="This build is signed with a Developer ID and notarized by Apple."
+          else
+            FIRST_OPEN="This build isn't notarized, so macOS blocks the first launch. Open it once, then go to System Settings → Privacy & Security and click **Open Anyway**. Or run \`xattr -dr com.apple.quarantine /Applications/Keylume.app\` in Terminal."
+          fi
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          Unofficial macOS configurator for the Royal Kludge RK84 RGB (USB 258A:00C8). Not affiliated with Royal Kludge.
+
+          ### Install
+          1. Download **Keylume-$VERSION.zip**, unzip it, and move **Keylume.app** to Applications.
+          2. $FIRST_OPEN
+          3. Allow **Input Monitoring** when asked (System Settings → Privacy & Security → Input Monitoring), then reopen the app.
+
+          Universal build for Apple silicon and Intel, macOS 14 or later. The \`keylume\` command-line tool is included in the zip.
+
+          SHA-256: \`$(cut -d' ' -f1 "dist/Keylume-$VERSION.zip.sha256")\`
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/Keylume-$VERSION.zip" "dist/Keylume-$VERSION.zip.sha256" \
+            --title "Keylume $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag

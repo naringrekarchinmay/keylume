@@ -35,13 +35,30 @@ supported. The vendor app doesn't support them either.
 
 ## Install
 
-Requires macOS 14+ and Xcode or the Swift toolchain.
+Requires macOS 14 or later, on Apple silicon or Intel.
+
+1. Download the latest **Keylume-x.y.z.zip** from
+   [Releases](https://github.com/naringrekarchinmay/keylume/releases), unzip
+   it, and move **Keylume.app** to Applications.
+2. Builds aren't notarized yet, so macOS blocks the first launch. Open the app
+   once, then go to System Settings → Privacy & Security and click
+   **Open Anyway**. Or run this in Terminal:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Keylume.app
+   ```
+
+### Build from source
+
+Requires Xcode 26 or later (for the Liquid Glass APIs).
 
 ```bash
 git clone https://github.com/naringrekarchinmay/keylume && cd keylume
 ./scripts/make-app.sh
 open dist/Keylume.app
 ```
+
+### First launch
 
 On first launch, macOS asks for **Input Monitoring**. macOS requires this
 before any app can talk to a keyboard. Keylume only sends settings and never
@@ -84,6 +101,19 @@ swift run KeylumeApp
 
 Layout: `KeylumeKit` builds the packets (pure, unit-tested) and handles IOKit.
 `keylume` is the CLI. `KeylumeApp` is the SwiftUI app.
+
+### Releasing
+
+Push a version tag and GitHub Actions builds a universal zip and publishes the
+release:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+To build the same zip locally: `VERSION=0.1.0 ./scripts/package-release.sh`.
+Developer ID signing and notarization switch on automatically once the secrets
+listed in `.github/workflows/release.yml` are added to the repository.
 
 ## License
 
